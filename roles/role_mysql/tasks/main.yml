@@ -1,0 +1,26 @@
+---
+- name: Installer MySQL
+  apt:
+    name: mysql-server
+    state: present
+  become: yes
+
+- name: Assurer que MySQL est démarré
+  service:
+    name: mysql
+    state: started
+  become: yes
+
+- name: Créer la base de données Magento
+  mysql_db:
+    name: magento
+    state: present
+  become: yes
+
+- name: Créer l'utilisateur MySQL pour Magento
+  mysql_user:
+    name: magento_user
+    password: "password"
+    priv: "magento.*:ALL"
+    state: present
+  become: yes

@@ -1,0 +1,10 @@
+---
+- hosts: dbservers
+  become: yes
+  roles:
+    - role_mysql
+
+- hosts: webservers
+  become: yes
+  roles:
+    - role_magento

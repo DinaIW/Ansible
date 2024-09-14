@@ -1,0 +1,42 @@
+---
+- name: Installer Apache et PHP
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - apache2
+    - php
+    - php-mysql
+    - php-gd
+    - php-xml
+  become: yes
+
+- name: Télécharger Magento
+  get_url:
+    url: "https://magento-url/magento.zip"
+    dest: /var/www/html/magento.zip
+  become: yes
+
+- name: Décompresser Magento
+  unarchive:
+    src: /var/www/html/magento.zip
+    dest: /var/www/html/
+    remote_src: yes
+  become: yes
+
+- name: Configurer Apache pour Magento
+  template:
+    src: magento.conf.j2
+    dest: /etc/apache2/sites-available/magento.conf
+  notify: restart apache
+  become: yes
+
+- name: Activer le site Magento
+  command: a2ensite magento.conf
+  become: yes
+
+- name: Redémarrer Apache
+  service:
+    name: apache2
+    state: restarted
+  become: yes

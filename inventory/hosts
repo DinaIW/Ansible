@@ -1,0 +1,5 @@
+[webservers]
+magento-server ansible_host=192.168.1.100 ansible_user=ubuntu
+
+[dbservers]
+db-server ansible_host=192.168.1.101 ansible_user=ubuntu
