@@ -1,0 +1,27 @@
+---
+  # 1. Déployer MySQL en premier pour préparer la base de données
+  - hosts: database
+    become: yes
+    vars_files:
+      - secrets.yml  # Inclusion des variables Vault pour les mots de passe
+    roles:
+      - magento_mysql  # Ce rôle installe MySQL et configure la base de données pour Magento
+
+      # 3. Déployer Nginx après Magento pour servir le site Magento
+  - hosts: web
+    become: yes
+    vars_files:
+      - secrets.yml
+    roles:
+      - nginx  # Ce rôle configure Nginx pour servir Magento
+
+  # 2. Déployer Magento une fois que la base de données est prête
+  - hosts: web
+    become: yes
+    vars_files:
+      - secrets.yml
+      - inventory/group_vars/mysql.yml
+    roles:
+      - magento  # Ce rôle installe et configure Magento
+
+

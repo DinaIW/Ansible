@@ -1,0 +1,51 @@
+---
+  # tasks file for nginx
+
+  # 1. Installation de Nginx
+  - name: Install Nginx
+    apt:
+      name: nginx
+      state: present
+    become: yes
+
+  # 2. Démarrage et activation du service Nginx
+  - name: Ensure Nginx is running
+    service:
+      name: nginx
+      state: started
+      enabled: yes
+    become: yes
+
+  # 3. Copie de la configuration Nginx
+  - name: Copy Nginx configuration for Magento
+    template:
+      src: nginx.conf.j2
+      dest: /etc/nginx/sites-available/magento
+    become: yes
+
+  # 4. Lien symbolique vers sites-enabled
+  - name: Enable Nginx site configuration
+    file:
+      src: /etc/nginx/sites-available/magento
+      dest: /etc/nginx/sites-enabled/magento
+      state: link
+    become: yes
+
+  # 5. Supprimer la configuration par défaut
+  - name: Remove default Nginx site configuration
+    file:
+      path: /etc/nginx/sites-enabled/default
+      state: absent
+    become: yes
+
+  # 6. Vérification de la configuration Nginx
+  - name: Test Nginx configuration
+    command: nginx -t
+    become: yes
+
+  # 7. Redémarrage de Nginx pour appliquer les modifications
+  - name: Restart Nginx
+    service:
+      name: nginx
+      state: restarted
+    become: yes

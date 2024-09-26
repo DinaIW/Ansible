@@ -1,0 +1,16 @@
+# Groupe pour les serveurs d'application (Magento, Nginx)
+[magento]
+app-server ansible_host=ec2-35-180-186-138.eu-west-3.compute.amazonaws.com ansible_user=ubuntu ansible_private_key_file=/home/ubuntu/.ssh/ansible-master.pem
+
+# Groupe pour les serveurs de base de données (MySQL)
+[mysql]
+db-server ansible_host=ec2-35-180-29-28.eu-west-3.compute.amazonaws.com ansible_user=ubuntu ansible_private_key_file=/home/ubuntu/.ssh/ansible-master.pem
+
+# Groupe parent pour les serveurs web (Magento et Nginx) qui utilise les app_servers
+[web:children]
+magento
+
+# Groupe parent pour les serveurs de base de données (MySQL et Magento MySQL) qui utilise les db_servers
+[database:children]
+mysql
+

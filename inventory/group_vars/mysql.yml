@@ -1,0 +1,5 @@
+---
+mysql_admin_pass: "{{ mysql_admin_pass }}"
+db_user: "{{ db_user_name }}"
+db_pass: "{{ db_pass }}"
+db_name: "fab_magento_db"

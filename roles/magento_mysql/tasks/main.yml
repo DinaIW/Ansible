@@ -1,0 +1,150 @@
+---
+  # tasks file for magento_mysql
+  # Tâches pour installer et configurer MySQL
+
+  # Mise à jour complète du système
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+    become: yes
+    tags: system
+
+  - name: Perform a full system upgrade
+    apt:
+      upgrade: dist
+    become: yes
+    tags: system
+
+  # 0. Installation de Python et pip (pré-requis)
+  - name: Ensure Python 3 is installed
+    apt:
+      name: python3
+      state: present
+    become: yes
+    tags: mysql
+
+  - name: Download get-pip.py
+    get_url:
+      url: https://bootstrap.pypa.io/get-pip.py
+      dest: /tmp/get-pip.py
+    become: yes
+    tags: mysql
+
+  - name: Install pip3 using get-pip.py
+    command: python3 /tmp/get-pip.py
+    become: yes
+    tags: mysql
+
+  # Installer le connecteur MySQL via pip
+  - name: Install mysql-connector-python via pip
+    pip:
+      name: mysql-connector-python
+    become: yes
+    tags: mysql
+
+  # Installer PyMySQL via apt
+  - name: Install PyMySQL via apt
+    apt:
+      name: python3-pymysql
+      state: present
+    become: yes
+    tags: mysql
+
+  # 1. Ajouter le dépôt MySQL officiel et installer les dépendances
+
+  - name: Install dependencies for adding MySQL repository
+    ansible.builtin.apt:
+      name: "{{ item }}"
+      state: present
+    loop:
+      - wget
+      - gnupg
+    become: yes
+    tags: mysql
+
+  # Télécharger la clé MySQL
+  - name: Download MySQL GPG key
+    get_url:
+      url: https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+      dest: /tmp/RPM-GPG-KEY-mysql-2022
+    become: yes
+    tags: mysql
+
+  # Ajouter la clé GPG au système
+  - name: Add MySQL APT repository key
+    command: apt-key add /tmp/RPM-GPG-KEY-mysql-2022
+    become: yes
+    tags: mysql
+
+  - name: Add MySQL APT repository
+    ansible.builtin.apt_repository:
+      repo: "deb http://repo.mysql.com/apt/ubuntu/ focal mysql-8.0"
+      state: present
+    become: yes
+    tags: mysql
+
+  - name: Update the APT cache
+    ansible.builtin.apt:
+      update_cache: true
+    become: yes
+    tags: mysql
+
+  # 2. Installation de MySQL
+  - name: Install MySQL server
+    ansible.builtin.apt:
+      name: mysql-server
+      state: present
+    become: yes
+    tags: mysql
+
+  # 3. Démarrage du service MySQL
+  - name: Ensure MySQL is running
+    service:
+      name: mysql
+      state: started
+      enabled: yes
+    become: yes
+    tags: mysql
+
+  # 4. Vérification du plugin d'authentification root
+  - name: Check root auth method
+    command: "mysql -u root -e 'SELECT User, Host, plugin FROM mysql.user WHERE User=\"root\";'"
+    register: root_auth_method
+    ignore_errors: yes
+    become: yes
+    tags: mysql
+
+  # 5. Configurer l'authentification root uniquement si nécessaire
+  - name: Set root password and change auth method to mysql_native_password
+    mysql_user:
+      name: root
+      password: "{{ mysql_admin_pass }}"
+      host: localhost
+      priv: "*.*:ALL,GRANT"
+      state: present
+      login_unix_socket: /var/run/mysqld/mysqld.sock
+    when: "'auth_socket' in root_auth_method.stdout"
+    become: yes
+    tags: mysql
+
+  # 6. Création de la base de données
+  - name: Create database
+    mysql_db:
+      name: "{{ db_name }}"
+      state: present
+      login_user: root
+      login_password: "{{ mysql_admin_pass }}"
+    become: yes
+    tags: mysql
+
+  # 7. Création de l'utilisateur de la base de données
+  - name: Create MySQL user
+    mysql_user:
+      name: "{{ db_user }}"
+      password: "{{ db_pass }}"
+      priv: "{{ db_name }}.*:ALL"  # Accorde tous les privilèges sur la base de données
+      state: present
+      login_user: root
+      login_password: "{{ mysql_admin_pass }}"
+    become: yes
+    tags: mysql

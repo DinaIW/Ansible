@@ -1,0 +1,188 @@
+---
+ # tasks file for magento
+
+  # Mise à jour complète du système
+  # - name: Update apt cache
+  #   apt:
+  #     update_cache: yes
+  #   become: yes
+  #   tags: system
+
+  # - name: Perform a full system upgrade
+  #   apt:
+  #     upgrade: dist
+  #   become: yes
+  #   tags: system
+
+  # Réinstaller ca-certificates
+  - name: Reinstall ca-certificates
+    apt:
+      name: ca-certificates
+      state: present
+      update_cache: yes
+    become: yes
+    tags: system
+
+  - name: Installer Python 3 et python3-apt
+    apt:
+      name:
+        - python3
+        - python3-apt
+        - python3-pkg-resources
+        - python3-pip
+      state: present
+    tags: system
+
+  # Mettre à jour le cache après l'ajout du dépôt
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+    become: yes
+    tags: php
+
+  - name: Install apt-transport-https
+    apt:
+      name: apt-transport-https
+      state: present
+    become: yes
+    tags: php
+
+  - name: Add Ondřej Surý's PPA for PHP
+    apt_repository:
+      repo: "deb http://ppa.launchpad.net/ondrej/php/ubuntu jammy main"
+      state: present
+    become: yes
+    tags: php
+
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+    become: yes
+    tags: php
+
+  # PHP --------------------------------------------
+  # Installer PHP et les extensions requises
+  - name: Installer PHP et les extensions requises
+    apt:
+      pkg:
+        - php8.1-fpm
+        - php8.1-curl
+        - php8.1-dom
+        - php8.1-gd
+        - php8.1-intl
+        - php8.1-mysql
+        - php8.1-xml
+        - php8.1-soap
+        - php8.1-xsl
+        - php8.1-zip
+      update_cache: yes
+      cache_valid_time: 86400
+      state: present
+    become: yes
+    tags: php
+
+  - name: Restart PHP-FPM
+    service:
+      name: php8.1-fpm
+      state: restarted
+    become: yes
+    tags: php
+  # INITIALISATION DE MAGENTO ---------------------------
+
+  - name: Download Magento using curl
+    command: curl -L -o /tmp/magento.zip https://github.com/magento/magento2/archive/refs/tags/2.4.5.zip
+    become: yes
+    tags: download_magento
+
+  - name: Extract Magento archive
+    unarchive:
+      src: /tmp/magento.zip
+      dest: /var/www/html/
+      remote_src: yes
+    become: yes
+    tags: download_magento
+
+  - name: Set permissions and ownership for Magento
+    shell: |
+      find /var/www/html/magento2-2.4.5 -type d -exec chmod 750 {} \;
+      find /var/www/html/magento2-2.4.5 -type f -exec chmod 640 {} \;
+      chown -R www-data:www-data /var/www/html/magento2-2.4.5
+    become: yes
+    tags: install_magento
+
+  - name: Add ubuntu user to www-data group
+    user:
+      name: ubuntu
+      groups: www-data
+      append: yes
+    become: yes
+    tags: install_magento
+
+  # Install Composer
+  - name: Download Composer installer using curl
+    command: curl -L -o /tmp/composer-installer.php https://getcomposer.org/installer
+    become: yes
+    tags: install_magento
+
+  - name: Verify Composer installer download
+    stat:
+      path: /tmp/composer-installer.php
+    register: composer_installer
+    tags: install_magento
+
+  - name: Fail if Composer installer is not downloaded
+    fail:
+      msg: "Composer installer not found at /tmp/composer-installer.php"
+    when: not composer_installer.stat.exists
+    tags: install_magento
+
+  - name: Install Composer
+    command: php /tmp/composer-installer.php --install-dir=/usr/local/bin --filename=composer
+    become: yes
+    tags: install_magento
+
+  - name: Remove Composer installer
+    file:
+      path: /tmp/composer-installer.php
+      state: absent
+    become: yes
+    tags: install_magento
+
+  - name: Update Composer dependencies
+    command: composer update
+    args:
+      chdir: /var/www/html/magento2-2.4.5
+    become: yes
+    tags: install_magento
+
+  # Install Magento dependencies
+  - name: Install Magento dependencies
+    command: composer install
+    args:
+      chdir: /var/www/html/magento2-2.4.5
+    become: yes
+    tags: install_magento
+
+  # INSTALLATION DE MAGENTO --------------------------------
+  # 1. Installation de Magento via CLI
+  - name: Install Magento
+    command: >
+      php /var/www/html/magento2-2.4.5/bin/magento setup:install
+      --base-url="http://{{ base_url }}"
+      --db-host="{{ db_host }}"
+      --db-name="{{ db_name }}"
+      --db-user="{{ db_user }}"
+      --db-password="{{ db_pass_mg }}"
+      --admin-firstname="{{ admin_firstname }}"
+      --admin-lastname="{{ admin_lastname }}"
+      --admin-email="{{ admin_email }}"
+      --admin-user="{{ magento_admin_user }}"
+      --admin-password="{{ magento_admin_pass }}"
+      --language="{{ language }}"
+      --currency="{{ currency }}"
+      --timezone="{{ timezone }}"
+      --use-rewrites=1
+    args:
+      chdir: /var/www/html/magento2-2.4.5
+    become: yes
+    tags: install_magento

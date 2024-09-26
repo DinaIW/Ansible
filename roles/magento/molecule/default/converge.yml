@@ -1,0 +1,16 @@
+---
+  - name: Converge
+    hosts: all
+    tasks:
+      - name: "Include exam.magento"
+        include_role:
+          name: exam.magento
+
+      # Vérifier la version de PHP après le déploiement de Magento
+      - name: Check PHP version
+        command: php -v
+        register: php_version_output
+
+      - name: Display PHP version
+        debug:
+          var: php_version_output.stdout

@@ -1,0 +1,20 @@
+# Ignorer le fichier de suivi des états des instances
+instance_state.py
+
+# Ignorer le fichier de secrets
+secrets.yml
+
+# Ignorer les fichiers de logs
+logs/
+*.log
+
+# Ignorer les fichiers de configuration spécifiques aux machines locales
+*.retry
+*.cfg
+
+# Ignorer les fichiers de rôle temporaires créés par Molecule
+.molecule/
+
+# Ignorer les fichiers Python compilés
+__pycache__/
+*.py[cod]
