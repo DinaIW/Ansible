@@ -1,51 +1,68 @@
 ---
   # tasks file for nginx
 
-  # 1. Installation de Nginx
+  # 1. Mise à jour du cache APT pour s'assurer que les dernières versions des paquets sont disponibles
+  - name: Update apt cache
+    apt:
+      update_cache: yes
+    become: yes
+    tags: nginx
+
+  # 2. Installation de Nginx
   - name: Install Nginx
     apt:
       name: nginx
       state: present
     become: yes
+    tags: nginx
 
-  # 2. Démarrage et activation du service Nginx
+  # 3. Démarrage et activation du service Nginx
   - name: Ensure Nginx is running
     service:
       name: nginx
       state: started
       enabled: yes
     become: yes
+    tags: nginx
 
-  # 3. Copie de la configuration Nginx
+  # 4. Copie de la configuration Nginx pour Magento
   - name: Copy Nginx configuration for Magento
     template:
       src: nginx.conf.j2
       dest: /etc/nginx/sites-available/magento
     become: yes
+    tags: nginx
 
-  # 4. Lien symbolique vers sites-enabled
+  # 5. Lien symbolique vers sites-enabled pour activer la configuration de Magento
   - name: Enable Nginx site configuration
     file:
       src: /etc/nginx/sites-available/magento
       dest: /etc/nginx/sites-enabled/magento
       state: link
     become: yes
+    tags: nginx
 
-  # 5. Supprimer la configuration par défaut
+  # 6. Supprimer la configuration par défaut de Nginx
   - name: Remove default Nginx site configuration
     file:
       path: /etc/nginx/sites-enabled/default
       state: absent
     become: yes
+    tags: nginx
 
-  # 6. Vérification de la configuration Nginx
+  # 7. Vérification de la configuration Nginx avant redémarrage
   - name: Test Nginx configuration
     command: nginx -t
+    register: nginx_test
+    ignore_errors: yes
     become: yes
+    tags: nginx
 
-  # 7. Redémarrage de Nginx pour appliquer les modifications
-  - name: Restart Nginx
+  # 8. Redémarrage de Nginx uniquement si la configuration est correcte
+  - name: Restart Nginx if configuration is valid
     service:
       name: nginx
       state: restarted
+    when: nginx_test.rc == 0
     become: yes
+    tags: nginx
