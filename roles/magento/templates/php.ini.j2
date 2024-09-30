@@ -1,0 +1,65 @@
+; Basic Settings
+error_reporting = E_ALL
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+error_log = /var/log/php_errors.log
+
+; Date and Time
+date.timezone = Europe/Amsterdam
+
+; File Uploads
+file_uploads = On
+upload_tmp_dir = /tmp
+upload_max_filesize = 2M
+post_max_size = 8M
+
+; Resource Limits
+max_execution_time = 30
+max_input_time = 60
+memory_limit = 128M
+
+; Session Settings
+session.use_cookies = 1
+session.use_only_cookies = 1
+session.cookie_secure = 0
+session.cookie_httponly = 1
+session.gc_maxlifetime = 1440
+
+; Extensions
+extension=curl
+extension=gd
+extension=intl
+extension=mysqli
+extension=xml
+extension=bcmath
+extension=soap
+extension=zip
+
+; Ensure mysqli and other extensions are loaded correctly
+extension_dir = "/usr/lib/php/20210902"  ; Décommenté pour spécifier explicitement le chemin du répertoire des extensions
+
+; Remove duplicate extensions if necessary (mysqli, bcmath, xml are already loaded above)
+; Assurez-vous qu'il n'y a pas de doublon comme ci-dessous, ces lignes ne sont plus nécessaires si elles sont déjà définies plus haut
+extension=mysqli
+extension=pdo_mysql
+extension=bcmath
+
+; FPM Settings
+; This is the default PHP-FPM configuration, uncomment if using PHP-FPM
+; pm = dynamic
+; pm.max_children = 5
+; pm.start_servers = 2
+; pm.min_spare_servers = 1
+; pm.max_spare_servers = 3
+; pm.max_requests = 500
+
+; Include additional configuration files
+; Scan additional ini files
+; include_path = ".:/usr/share/php"
+; auto_prepend_file = ""
+; auto_append_file = ""
+
+; SMTP Settings
+; SMTP = localhost
+; smtp_port = 25

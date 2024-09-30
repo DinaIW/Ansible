@@ -1,45 +1,7 @@
 ---
- # tasks file for magento
+  # tasks file for magento
 
-  # Mise à jour complète du système
-  # - name: Update apt cache
-  #   apt:
-  #     update_cache: yes
-  #   become: yes
-  #   tags: system
-
-  # - name: Perform a full system upgrade
-  #   apt:
-  #     upgrade: dist
-  #   become: yes
-  #   tags: system
-
-  # Réinstaller ca-certificates
-  - name: Reinstall ca-certificates
-    apt:
-      name: ca-certificates
-      state: present
-      update_cache: yes
-    become: yes
-    tags: system
-
-  - name: Installer Python 3 et python3-apt
-    apt:
-      name:
-        - python3
-        - python3-apt
-        - python3-pkg-resources
-        - python3-pip
-      state: present
-    tags: system
-
-  # Mettre à jour le cache après l'ajout du dépôt
-  - name: Update apt cache
-    apt:
-      update_cache: yes
-    become: yes
-    tags: php
-
+  # Installer apt-transport-https
   - name: Install apt-transport-https
     apt:
       name: apt-transport-https
@@ -47,24 +9,25 @@
     become: yes
     tags: php
 
+  # Ajouter le dépôt PHP de Ondřej Surý pour installer PHP 8.1
   - name: Add Ondřej Surý's PPA for PHP
-    apt_repository:
-      repo: "deb http://ppa.launchpad.net/ondrej/php/ubuntu jammy main"
+    ansible.builtin.apt_repository:
+      repo: "ppa:ondrej/php"
       state: present
     become: yes
     tags: php
 
-  - name: Update apt cache
-    apt:
+  # Mettre à jour le cache apt après l'ajout du PPA PHP
+  - name: Update apt cache after adding PHP PPA
+    ansible.builtin.apt:
       update_cache: yes
     become: yes
     tags: php
 
-  # PHP --------------------------------------------
-  # Installer PHP et les extensions requises
-  - name: Installer PHP et les extensions requises
-    apt:
-      pkg:
+  # Installer PHP 8.1 et les extensions nécessaires
+  - name: Install PHP 8.1 and required extensions
+    ansible.builtin.apt:
+      name:
         - php8.1-fpm
         - php8.1-curl
         - php8.1-dom
@@ -75,97 +38,90 @@
         - php8.1-soap
         - php8.1-xsl
         - php8.1-zip
+        - php8.1-bcmath
+        - php8.1-mbstring
       update_cache: yes
       cache_valid_time: 86400
       state: present
     become: yes
     tags: php
 
+  # Redémarrer PHP-FPM
   - name: Restart PHP-FPM
-    service:
+    ansible.builtin.service:
       name: php8.1-fpm
       state: restarted
     become: yes
     tags: php
-  # INITIALISATION DE MAGENTO ---------------------------
 
+  # Redémarrer Nginx
+  - name: Restart Nginx
+    ansible.builtin.service:
+      name: nginx
+      state: restarted
+    become: yes
+    tags: php
+
+  # Installer l'utilitaire unzip
+  - name: Install unzip utility
+    apt:
+      name: unzip
+      state: present
+    become: yes
+    tags: magentodl
+
+  # Télécharger Magento avec curl
   - name: Download Magento using curl
     command: curl -L -o /tmp/magento.zip https://github.com/magento/magento2/archive/refs/tags/2.4.5.zip
     become: yes
-    tags: download_magento
+    tags: magentodl
 
+  # Extraire l'archive Magento uniquement si elle n'est pas encore extraite
   - name: Extract Magento archive
     unarchive:
       src: /tmp/magento.zip
       dest: /var/www/html/
       remote_src: yes
+      creates: /var/www/html/magento2-2.4.5
     become: yes
-    tags: download_magento
+    tags: magento_extract
 
-  - name: Set permissions and ownership for Magento
+  # Définir les permissions d'appartenance pour Magento (ne nécessite plus de 777)
+  - name: Set ownership for Magento
+    ansible.builtin.file:
+      path: /var/www/html/magento2-2.4.5
+      recurse: yes
+      owner: www-data
+      group: www-data
+    become: yes
+    tags: perm
+
+  # Installer Composer en tant qu'utilisateur ubuntu
+  - name: Install Composer as ubuntu user
     shell: |
-      find /var/www/html/magento2-2.4.5 -type d -exec chmod 750 {} \;
-      find /var/www/html/magento2-2.4.5 -type f -exec chmod 640 {} \;
-      chown -R www-data:www-data /var/www/html/magento2-2.4.5
+      curl -sS https://getcomposer.org/installer | php
+      sudo mv composer.phar /usr/local/bin/composer
     become: yes
-    tags: install_magento
+    tags: composer
 
-  - name: Add ubuntu user to www-data group
-    user:
-      name: ubuntu
-      groups: www-data
-      append: yes
-    become: yes
-    tags: install_magento
-
-  # Install Composer
-  - name: Download Composer installer using curl
-    command: curl -L -o /tmp/composer-installer.php https://getcomposer.org/installer
-    become: yes
-    tags: install_magento
-
-  - name: Verify Composer installer download
-    stat:
-      path: /tmp/composer-installer.php
-    register: composer_installer
-    tags: install_magento
-
-  - name: Fail if Composer installer is not downloaded
-    fail:
-      msg: "Composer installer not found at /tmp/composer-installer.php"
-    when: not composer_installer.stat.exists
-    tags: install_magento
-
-  - name: Install Composer
-    command: php /tmp/composer-installer.php --install-dir=/usr/local/bin --filename=composer
-    become: yes
-    tags: install_magento
-
-  - name: Remove Composer installer
+  # S'assurer que l'utilisateur ubuntu a les permissions sur le répertoire Magento
+  - name: Ensure ubuntu has ownership of Magento directory
     file:
-      path: /tmp/composer-installer.php
-      state: absent
+      path: /var/www/html/magento2-2.4.5
+      owner: ubuntu
+      group: www-data
+      recurse: yes
     become: yes
-    tags: install_magento
+    tags: composer
 
-  - name: Update Composer dependencies
-    command: composer update
-    args:
-      chdir: /var/www/html/magento2-2.4.5
-    become: yes
-    tags: install_magento
+  - name: Install Magento dependencies using Composer in the correct directory
+    shell: |
+      cd /var/www/html/magento2-2.4.5 && php -d memory_limit=-1 /usr/local/bin/composer install
+    become: no
+    tags: composer
 
-  # Install Magento dependencies
-  - name: Install Magento dependencies
-    command: composer install
-    args:
-      chdir: /var/www/html/magento2-2.4.5
-    become: yes
-    tags: install_magento
-
-  # INSTALLATION DE MAGENTO --------------------------------
-  # 1. Installation de Magento via CLI
-  - name: Install Magento
+  # Exécution du script d'installation automatisé de Magento
+  - name: Run Magento automated installation script
     command: >
       php /var/www/html/magento2-2.4.5/bin/magento setup:install
       --base-url="http://{{ base_url }}"
@@ -182,7 +138,8 @@
       --currency="{{ currency }}"
       --timezone="{{ timezone }}"
       --use-rewrites=1
+      --backend-frontname="admin"
     args:
       chdir: /var/www/html/magento2-2.4.5
     become: yes
-    tags: install_magento
+    tags: magento_install

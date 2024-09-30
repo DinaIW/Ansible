@@ -3,3 +3,11 @@ mysql_admin_pass: "{{ mysql_admin_pass }}"
 db_user: "{{ db_user_name }}"
 db_pass: "{{ db_pass }}"
 db_name: "fab_magento_db"
+db_user_name: "Fabien"
+
+#mysql
+db_host: "ec2-35-180-120-238.eu-west-3.compute.amazonaws.com"
+#magento
+nginx_server_name: "ec2-35-180-30-100.eu-west-3.compute.amazonaws.com"
+ip_magento: '%'
+full_ip: 0.0.0.0

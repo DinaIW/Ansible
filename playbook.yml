@@ -12,6 +12,7 @@
     become: yes
     vars_files:
       - secrets.yml
+      - inventory/group_vars/mysql.yml
     roles:
       - nginx  # Ce rôle configure Nginx pour servir Magento
 
