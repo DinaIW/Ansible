@@ -1,31 +1,6 @@
 ---
-  # tasks file for magento
-
-  # Installer apt-transport-https
-  - name: Install apt-transport-https
-    apt:
-      name: apt-transport-https
-      state: present
-    become: yes
-    tags: php
-
-  # Ajouter le dépôt PHP de Ondřej Surý pour installer PHP 8.1
-  - name: Add Ondřej Surý's PPA for PHP
-    ansible.builtin.apt_repository:
-      repo: "ppa:ondrej/php"
-      state: present
-    become: yes
-    tags: php
-
-  # Mettre à jour le cache apt après l'ajout du PPA PHP
-  - name: Update apt cache after adding PHP PPA
-    ansible.builtin.apt:
-      update_cache: yes
-    become: yes
-    tags: php
-
-  # Installer PHP 8.1 et les extensions nécessaires
-  - name: Install PHP 8.1 and required extensions
+  # 1. Installation et Configuration de PHP
+  - name: Installer PHP 8.1 et les extensions requises
     ansible.builtin.apt:
       name:
         - php8.1-fpm
@@ -41,94 +16,76 @@
         - php8.1-bcmath
         - php8.1-mbstring
       update_cache: yes
-      cache_valid_time: 86400
       state: present
     become: yes
     tags: php
 
-  # Redémarrer PHP-FPM
-  - name: Restart PHP-FPM
+  - name: Redémarrer PHP-FPM et Nginx
     ansible.builtin.service:
-      name: php8.1-fpm
+      name: "{{ item }}"
       state: restarted
+    with_items:
+      - php8.1-fpm
+      - nginx
     become: yes
     tags: php
 
-  # Redémarrer Nginx
-  - name: Restart Nginx
-    ansible.builtin.service:
-      name: nginx
-      state: restarted
-    become: yes
-    tags: php
-
-  # Installer l'utilitaire unzip
-  - name: Install unzip utility
-    apt:
-      name: unzip
-      state: present
-    become: yes
-    tags: magentodl
-
-  # Télécharger Magento avec curl
-  - name: Download Magento using curl
-    command: curl -L -o /tmp/magento.zip https://github.com/magento/magento2/archive/refs/tags/2.4.5.zip
-    become: yes
-    tags: magentodl
-
-  # Extraire l'archive Magento uniquement si elle n'est pas encore extraite
-  - name: Extract Magento archive
-    unarchive:
-      src: /tmp/magento.zip
+  # 2. Téléchargement et Extraction de Magento
+  - name: Télécharger et extraire Magento
+    ansible.builtin.unarchive:
+      src: "https://github.com/magento/magento2/archive/refs/tags/2.4.5.zip"
       dest: /var/www/html/
       remote_src: yes
       creates: /var/www/html/magento2-2.4.5
     become: yes
     tags: magento_extract
 
-  # Définir les permissions d'appartenance pour Magento (ne nécessite plus de 777)
-  - name: Set ownership for Magento
-    ansible.builtin.file:
-      path: /var/www/html/magento2-2.4.5
-      recurse: yes
-      owner: www-data
-      group: www-data
+  # 3. Configuration des Permissions
+  - name: Définir la propriété des répertoires Magento à ubuntu:www-data
+    ansible.builtin.command:
+      cmd: chown -R ubuntu:www-data /var/www/html/magento2-2.4.5
     become: yes
     tags: perm
 
-  # Installer Composer en tant qu'utilisateur ubuntu
-  - name: Install Composer as ubuntu user
-    shell: |
+  - name: Définir les permissions des répertoires Magento spécifiés à 775
+    ansible.builtin.command:
+      cmd: chmod -R 775 /var/www/html/magento2-2.4.5
+    become: yes
+    tags: perm
+
+  - name: Définir les permissions des fichiers Magento spécifiés à 664
+    ansible.builtin.command:
+      cmd: find /var/www/html/magento2-2.4.5 -type f -exec chmod 664 {} \;
+    become: yes
+    tags: perm
+
+  # 4. Installation de Composer
+  - name: Installer Composer
+    ansible.builtin.shell: |
       curl -sS https://getcomposer.org/installer | php
-      sudo mv composer.phar /usr/local/bin/composer
+      mv composer.phar /usr/local/bin/composer
     become: yes
     tags: composer
 
-  # S'assurer que l'utilisateur ubuntu a les permissions sur le répertoire Magento
-  - name: Ensure ubuntu has ownership of Magento directory
-    file:
-      path: /var/www/html/magento2-2.4.5
-      owner: ubuntu
-      group: www-data
-      recurse: yes
+  # 5. Installation des Dépendances Magento avec Composer
+  - name: Installer les dépendances Magento en utilisant Composer dans le bon répertoire
+    ansible.builtin.command:
+      cmd: php -d memory_limit=-1 /usr/local/bin/composer install
+      chdir: /var/www/html/magento2-2.4.5
     become: yes
+    become_user: ubuntu  # Spécifie que la commande doit être exécutée en tant qu'utilisateur ubuntu
+    environment:
+      COMPOSER_HOME: /var/www/html/magento2-2.4.5
     tags: composer
 
-  - name: Install Magento dependencies using Composer in the correct directory
-    shell: |
-      cd /var/www/html/magento2-2.4.5 && php -d memory_limit=-1 /usr/local/bin/composer install
-    become: no
-    tags: composer
-
-  # Exécution du script d'installation automatisé de Magento
-  - name: Run Magento automated installation script
-    command: >
-      php /var/www/html/magento2-2.4.5/bin/magento setup:install
-      --base-url="http://{{ base_url }}"
+  - name: Exécuter le script d'installation automatisé de Magento sans Elasticsearch
+    ansible.builtin.command: >
+      php bin/magento setup:install
+      --base-url="{{ base_url }}"
       --db-host="{{ db_host }}"
       --db-name="{{ db_name }}"
       --db-user="{{ db_user }}"
-      --db-password="{{ db_pass_mg }}"
+      --db-password="{{ db_pass }}"
       --admin-firstname="{{ admin_firstname }}"
       --admin-lastname="{{ admin_lastname }}"
       --admin-email="{{ admin_email }}"
@@ -138,8 +95,9 @@
       --currency="{{ currency }}"
       --timezone="{{ timezone }}"
       --use-rewrites=1
-      --backend-frontname="admin"
+      --disable-modules="Magento_Elasticsearch,Magento_Elasticsearch6,Magento_Elasticsearch7"
     args:
-      chdir: /var/www/html/magento2-2.4.5
+      chdir: "/var/www/html/magento2-2.4.5"
     become: yes
+    become_user: ubuntu
     tags: magento_install

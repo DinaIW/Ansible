@@ -1,13 +1,13 @@
 ---
 mysql_admin_pass: "{{ mysql_admin_pass }}"
 db_user: "{{ db_user_name }}"
-db_pass: "{{ db_pass }}"
+db_pass: "{{ db_pass_secret }}"
 db_name: "fab_magento_db"
 db_user_name: "Fabien"
-
+db_pass_mg: "password123"
 #mysql
-db_host: "ec2-35-180-120-238.eu-west-3.compute.amazonaws.com"
+db_host: "ec2-35-180-87-107.eu-west-3.compute.amazonaws.com"
 #magento
-nginx_server_name: "ec2-35-180-30-100.eu-west-3.compute.amazonaws.com"
+nginx_server_name: "ec2-13-39-87-106.eu-west-3.compute.amazonaws.com"
 ip_magento: '%'
 full_ip: 0.0.0.0

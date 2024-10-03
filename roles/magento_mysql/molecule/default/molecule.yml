@@ -1,13 +1,28 @@
 ---
   dependency:
     name: galaxy
+
   driver:
-    name: docker
+    name: ec2
+
   platforms:
     - name: instance
-      image: quay.io/centos/centos:stream8
-      pre_build_image: true
+      instance_type: t2.micro
+      image: ami-07db896e164bc4476
+      region: eu-west-3
+      keypair_name: ansible-master.pem
+      security_group_ids:
+        - sg-0d8dbba618168ad22
+
   provisioner:
     name: ansible
+    config_options:
+      defaults:
+        remote_user: ubuntu
+    inventory:
+      hosts: /home/ubuntu/ansible/inventory/hosts  # Chemin vers ton inventaire statique INI
+
   verifier:
     name: testinfra
+    options:
+      ansible_inventory: /home/ubuntu/ansible/inventory/hosts

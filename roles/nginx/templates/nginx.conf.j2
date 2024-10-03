@@ -1,80 +1,97 @@
 server {
-    # Le répertoire racine de Magento
-    root {{ nginx_root }};
+    # Adresse IP ou nom de domaine de votre serveur
+    server_name {{ nginx_server_name }};
 
-    # Ajouter index.php à la liste pour Magento
+    # Répertoire racine pointant vers le dossier "pub" de Magento
+    root /var/www/html/magento2-2.4.5/pub;
+
+    # Index des fichiers
     index index.php index.html index.htm;
 
-    server_name {{ nginx_server_name }} www.{{ nginx_server_name }};
-
-    # Configuration des logs d'accès et d'erreurs spécifiques à Magento
+    # Logs spécifiques à Magento
     access_log /var/log/nginx/magento_access.log;
     error_log /var/log/nginx/magento_error.log;
 
-    # Localisation de l'application
+    # Redirection des requêtes vers index.php si le fichier ou le répertoire n'existe pas
     location / {
-        # Magento utilise l'index.php comme point d'entrée, même pour les requêtes de fichiers manquants
         try_files $uri $uri/ /index.php$is_args$args;
     }
 
-    # Optimisations pour les fichiers statiques (images, JS, CSS)
-    location ~* \.(css|gif|ico|jpeg|jpg|js|png|svg|woff|woff2|eot|ttf|otf)$ {
+    # Optimisation pour les fichiers statiques (images, CSS, JS, polices, etc.)
+    location ~* \.(css|js|jpg|jpeg|png|gif|ico|svg|woff|woff2|eot|ttf|otf)$ {
+        try_files $uri =404;
         expires max;
-        log_not_found off;
+        access_log off;
+        add_header Cache-Control "public";
+    }
+
+    # Gestion des fichiers médias
+    location /media/ {
+        try_files $uri $uri/ /get.php$is_args$args;
+        expires max;
         access_log off;
     }
 
-    # Désactiver les logs pour certains fichiers
-    location = /favicon.ico { log_not_found off; access_log off; }
-    location = /robots.txt  { log_not_found off; access_log off; allow all; }
-
-    # Configuration pour Magento (fichiers d'installation)
-    location /media/ {
-        try_files $uri $uri/ =404;
-    }
+    # Gestion des fichiers statiques
     location /static/ {
+        # Empêcher la signature des fichiers statiques (optionnel)
         expires off;
         add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
-        try_files $uri $uri/ /index.php$is_args$args;
+
+        # Permettre à Nginx de suivre les symlinks
+        disable_symlinks off;
+
+        try_files $uri $uri/ /static.php?resource=$uri&$args;
     }
 
-    # Redirection pour les fichiers PHP à passer à PHP-FPM
-    location ~ \.php$ {
-        try_files $uri =404;
-
-        # Configuration FastCGI pour Magento
-        include /etc/nginx/fastcgi_params;
-        fastcgi_read_timeout 600s;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_pass unix:/run/php/php{{ php_ver }}-fpm.sock;
-
-        # Séparation des chemins pour PHP-FPM
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_index index.php;
-        fastcgi_buffers 16 16k;
-        fastcgi_buffer_size 32k;
-    }
-
-    # Configuration pour empêcher l'accès aux fichiers critiques de Magento
+    # Désactiver l'accès direct à certains fichiers et répertoires sensibles
     location ~ ^/(app|bin|lib|pkginfo|report|var)/ {
         deny all;
     }
+
+    # Empêcher l'accès aux fichiers cachés (ex : .git, .htaccess)
     location ~ /\.(?!well-known).* {
         deny all;
     }
 
-    # Désactiver l'accès aux fichiers sensibles
+    # Empêcher l'accès aux fichiers sensibles (SQL, archives)
     location ~* \.(sql|tar|gz|zip)$ {
         deny all;
     }
 
-    # Compression pour améliorer les performances
+    # Gestion des fichiers PHP via PHP-FPM
+    location ~ \.php$ {
+        try_files $uri =404;
+
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock; # Assurez-vous que ce chemin correspond à votre socket PHP-FPM
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_index index.php;
+        fastcgi_buffers 16 16k;
+        fastcgi_buffer_size 32k;
+        fastcgi_read_timeout 600s;
+    }
+
+    # Configuration de gzip pour améliorer les performances
     gzip on;
-    gzip_types text/css application/javascript application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
-    gzip_proxied any;
-    gzip_disable "msie6";
     gzip_vary on;
-    gzip_min_length 1100;
-    gzip_buffers 16 8k;
-    gzip_http_version 1.1;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+    gzip_disable "msie6";
+
+    # Optimisations des connexions
+    keepalive_timeout 15;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    types_hash_max_size 2048;
+    client_max_body_size 100M; # Ajustez selon vos besoins
+
+    # Sécurité supplémentaire
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval';" always;
 }

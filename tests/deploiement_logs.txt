@@ -1,0 +1,121 @@
+
+PLAY [database] ****************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [db-server]
+
+TASK [magento_mysql : Mise à jour du cache APT] ********************************
+changed: [db-server]
+
+TASK [magento_mysql : Mise à niveau complète du système] ***********************
+ok: [db-server]
+
+TASK [magento_mysql : Installation des paquets requis] *************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation de pymysql] *********************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation du serveur MySQL] ***************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation du client MySQL] ****************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation de mysqlclient] *****************************
+ok: [db-server]
+
+TASK [magento_mysql : Démarrage de MySQL] **************************************
+ok: [db-server]
+
+TASK [magento_mysql : Vérification du mode d'authentification root] ************
+fatal: [db-server]: FAILED! => {"changed": true, "cmd": ["mysql", "-u", "root", "-e", "SELECT User, Host, plugin FROM mysql.user WHERE User=\"root\";"], "delta": "0:00:00.139084", "end": "2024-10-03 12:47:28.341399", "msg": "non-zero return code", "rc": 1, "start": "2024-10-03 12:47:28.202315", "stderr": "ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)", "stderr_lines": ["ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)"], "stdout": "", "stdout_lines": []}
+...ignoring
+
+TASK [magento_mysql : Configuration du mot de passe root] **********************
+skipping: [db-server]
+
+TASK [magento_mysql : Création de la base de données] **************************
+ok: [db-server]
+
+TASK [magento_mysql : Création de l'utilisateur MySQL pour Fabien] *************
+[WARNING]: Option column_case_sensitive is not provided. The default is now
+false, so the column's name will be uppercased. The default will be changed to
+true in community.mysql 4.0.0.
+ok: [db-server]
+
+TASK [magento_mysql : Appliquer les changements de privilèges] *****************
+ok: [db-server]
+
+TASK [magento_mysql : Modifier le bind-address pour connexions externes] *******
+ok: [db-server]
+
+TASK [magento_mysql : Redémarrage de MySQL après modification] *****************
+changed: [db-server]
+
+PLAY [web] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [app-server]
+
+TASK [magento : Installer PHP 8.1 et les extensions requises] ******************
+ok: [app-server]
+
+TASK [magento : Redémarrer PHP-FPM et Nginx] ***********************************
+changed: [app-server] => (item=php8.1-fpm)
+changed: [app-server] => (item=nginx)
+
+TASK [magento : Télécharger et extraire Magento] *******************************
+skipping: [app-server]
+
+TASK [magento : Définir la propriété des répertoires Magento à ubuntu:www-data] ***
+changed: [app-server]
+
+TASK [magento : Définir les permissions des répertoires Magento spécifiés à 775] ***
+changed: [app-server]
+
+TASK [magento : Définir les permissions des fichiers Magento spécifiés à 664] ***
+changed: [app-server]
+
+TASK [magento : Installer Composer] ********************************************
+changed: [app-server]
+
+TASK [magento : Installer les dépendances Magento en utilisant Composer dans le bon répertoire] ***
+changed: [app-server]
+
+TASK [magento : Exécuter le script d'installation automatisé de Magento sans Elasticsearch] ***
+changed: [app-server]
+
+PLAY [web] *********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [app-server]
+
+TASK [nginx : Update apt cache] ************************************************
+changed: [app-server]
+
+TASK [nginx : Install Nginx] ***************************************************
+ok: [app-server]
+
+TASK [nginx : Ensure Nginx is running] *****************************************
+ok: [app-server]
+
+TASK [nginx : Copy Nginx configuration for Magento] ****************************
+changed: [app-server]
+
+TASK [nginx : Enable Nginx site configuration] *********************************
+ok: [app-server]
+
+TASK [nginx : Remove default Nginx site configuration] *************************
+ok: [app-server]
+
+TASK [nginx : Test Nginx configuration] ****************************************
+changed: [app-server]
+
+TASK [nginx : Restart Nginx if configuration is valid] *************************
+changed: [app-server]
+
+PLAY RECAP *********************************************************************
+app-server                 : ok=18   changed=11   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+db-server                  : ok=15   changed=3    unreachable=0    failed=0    skipped=1    rescued=0    ignored=1   
+

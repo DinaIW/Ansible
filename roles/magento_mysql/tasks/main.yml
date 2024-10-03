@@ -3,20 +3,20 @@
   # Tâches pour installer et configurer MySQL
 
   # Mise à jour complète du système
-  - name: Update apt cache
+  - name: Mise à jour du cache APT
     ansible.builtin.apt:
       update_cache: yes
     become: yes
     tags: pb0
 
-  - name: Perform a full system upgrade
+  - name: Mise à niveau complète du système
     ansible.builtin.apt:
       upgrade: dist
     become: yes
     tags: pb0
 
   # 0. Installation de Python, pip et des dépendances MySQL
-  - name: Ensure Python and necessary packages are installed
+  - name: Installation des paquets requis
     ansible.builtin.apt:
       name:
         - python3-pip
@@ -29,7 +29,7 @@
     tags: pb1
 
   # Installation de pymysql avec pip
-  - name: Install pymysql for Python3
+  - name: Installation de pymysql
     ansible.builtin.pip:
       name: pymysql
       state: present
@@ -37,14 +37,14 @@
     tags: pb1
 
   # Installer MySQL
-  - name: Install MySQL server
+  - name: Installation du serveur MySQL
     ansible.builtin.apt:
       name: mysql-server
       state: present
     become: yes
     tags: pb1
 
-  - name: Install MySQL client
+  - name: Installation du client MySQL
     ansible.builtin.apt:
       name: mysql-client
       state: present
@@ -52,14 +52,14 @@
     tags: pb1
 
   # Installer mysqlclient via pip
-  - name: Install mysqlclient via pip
+  - name: Installation de mysqlclient
     ansible.builtin.pip:
       name: mysqlclient
     become: yes
     tags: pb1
 
   # 3. Démarrage du service MySQL
-  - name: Ensure MySQL is running
+  - name: Démarrage de MySQL
     ansible.builtin.service:
       name: mysql
       state: started
@@ -68,7 +68,7 @@
     tags: pb1
 
   # 4. Vérification du plugin d'authentification root
-  - name: Check root auth method
+  - name: Vérification du mode d'authentification root
     ansible.builtin.command:
       cmd: "mysql -u root -e 'SELECT User, Host, plugin FROM mysql.user WHERE User=\"root\";'"
     register: root_auth_method
@@ -77,7 +77,7 @@
     tags: pb1
 
   # 5. Configurer l'authentification root uniquement si nécessaire
-  - name: Set root password and change auth method to mysql_native_password
+  - name: Configuration du mot de passe root
     community.mysql.mysql_user:
       name: root
       password: "{{ mysql_admin_pass }}"
@@ -91,7 +91,7 @@
     tags: pb1
 
   # 6. Création de la base de données
-  - name: Create database
+  - name: Création de la base de données
     community.mysql.mysql_db:
       name: "{{ db_name }}"
       state: present
@@ -101,42 +101,58 @@
     tags: pb1
 
   # 7. Créer l'utilisateur MySQL pour Fabien avec un accès depuis n'importe où (%)
-  - name: Create MySQL user for Fabien with wildcard host (%)
-    ansible.builtin.command: >
-      mysql -u root -p{{ mysql_admin_pass }} -e "CREATE USER 'Fabien'@'%' IDENTIFIED BY 'password';"
+  - name: Création de l'utilisateur MySQL pour Fabien
+    community.mysql.mysql_user:
+      name: Fabien
+      password: "{{ db_pass }}"
+      host: '%'
+      priv: "*.*:ALL,GRANT"
+      plugin: mysql_native_password
+      state: present
+      login_user: root
+      login_password: "{{ mysql_admin_pass }}"
     become: yes
-    ignore_errors: no  # Désactiver l'ignorance des erreurs pour capturer les erreurs SQL
     tags: pb1
 
-  # 8. Accorder les privilèges à l'utilisateur Fabien
-  - name: Grant all privileges to Fabien
-    ansible.builtin.command: >
-      mysql -u root -p{{ mysql_admin_pass }} -e "GRANT ALL PRIVILEGES ON *.* TO 'Fabien'@'%' WITH GRANT OPTION;"
-    become: yes
-    ignore_errors: no
-    tags: pb1
+  # # 1. Changer le mot de passe MySQL pour l'utilisateur Fabien
+  # - name: Modification du mot de passe pour Fabien
+  #   ansible.builtin.mysql_user:
+  #     name: Fabien
+  #     password: "{{ db_pass }}"
+  #     host: "%"
+  #     priv: '*.*:ALL,GRANT'
+  #     state: present
+  #     login_user: root
+  #     login_password: "{{ mysql_admin_pass }}"
+  #     login_host: "{{ db_host }}"
+  #   become: yes
+  #   tags: mysql_password
 
   # 9. Flush des privilèges pour activer les changements
-  - name: Flush MySQL privileges
-    ansible.builtin.command: >
-      mysql -u root -p{{ mysql_admin_pass }} -e "FLUSH PRIVILEGES;"
+  - name: Appliquer les changements de privilèges
+    community.mysql.mysql_user:
+      name: root
+      priv: "*.*:ALL,GRANT"
+      state: present
+      login_user: root
+      login_password: "{{ mysql_admin_pass }}"
+      host_all: yes
     become: yes
-    ignore_errors: no
     tags: pb1
 
   # 10. Modification de la configuration MySQL pour accepter les connexions externes après toutes les autres configurations
-  - name: Modify MySQL bind-address to allow external connections
+  - name: Modifier le bind-address pour connexions externes
     ansible.builtin.lineinfile:
       path: /etc/mysql/mysql.conf.d/mysqld.cnf
       regexp: '^bind-address'
-      line: 'bind-address = 0.0.0.0'  # Change le bind-address pour permettre les connexions externes
+      line: 'bind-address = 0.0.0.0'
       state: present
       backup: yes
     become: yes
     tags: pb1
 
   # 11. Redémarrage du service MySQL après modification du bind-address pour permettre les connexions externes
-  - name: Restart MySQL service to apply bind-address change
+  - name: Redémarrage de MySQL après modification
     ansible.builtin.service:
       name: mysql
       state: restarted

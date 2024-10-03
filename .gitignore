@@ -3,6 +3,7 @@ instance_state.py
 
 # Ignorer le fichier de secrets
 secrets.yml
+secrets.py
 
 # Ignorer les fichiers de logs
 logs/

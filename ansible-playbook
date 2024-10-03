@@ -1,0 +1,31 @@
+
+PLAY [database] ****************************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [db-server]
+
+TASK [magento_mysql : Mise à jour du cache APT] ********************************
+changed: [db-server]
+
+TASK [magento_mysql : Mise à niveau complète du système] ***********************
+ok: [db-server]
+
+TASK [magento_mysql : Installation des paquets requis] *************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation de pymysql] *********************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation du serveur MySQL] ***************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation du client MySQL] ****************************
+ok: [db-server]
+
+TASK [magento_mysql : Installation de mysqlclient] *****************************
+ok: [db-server]
+
+TASK [magento_mysql : Démarrage de MySQL] **************************************
+ok: [db-server]
+
+TASK [magento_mysql : Vérification du mode d'authentification root] ************

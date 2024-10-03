@@ -29,15 +29,15 @@
   - name: Copy Nginx configuration for Magento
     template:
       src: nginx.conf.j2
-      dest: /etc/nginx/sites-available/magento
+      dest: /etc/nginx/sites-available/magento.conf
     become: yes
     tags: nginx
 
   # 5. Lien symbolique vers sites-enabled pour activer la configuration de Magento
   - name: Enable Nginx site configuration
     file:
-      src: /etc/nginx/sites-available/magento
-      dest: /etc/nginx/sites-enabled/magento
+      src: /etc/nginx/sites-available/magento.conf
+      dest: /etc/nginx/sites-enabled/magento.conf
       state: link
     become: yes
     tags: nginx

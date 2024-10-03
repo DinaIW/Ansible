@@ -1,7 +1,7 @@
 ---
   - name: Converge
     hosts: all
-    tasks:
-      - name: "Include exam.magento_mysql"
-        include_role:
-          name: "exam.magento_mysql"
+    gather_facts: yes
+    become: yes
+    roles:
+      - role: exam.magento_mysql

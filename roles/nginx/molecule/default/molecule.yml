@@ -2,10 +2,10 @@
   dependency:
     name: galaxy
   driver:
-    name: docker
+    name: ec2
   platforms:
     - name: instance
-      image: quay.io/centos/centos:stream8
+      image: fallewi/ansible-molecule:datasientest
       pre_build_image: true
   provisioner:
     name: ansible

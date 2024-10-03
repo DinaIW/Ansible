@@ -1,6 +1,6 @@
 ---
   #magento
-  base_url: "ec2-35-180-30-100.eu-west-3.compute.amazonaws.com"
+  base_url: "http://ec2-13-39-87-106.eu-west-3.compute.amazonaws.com/"
 
   admin_firstname: "Fabien"
   admin_lastname: "User"
@@ -9,8 +9,12 @@
   language: fr_FR
   currency: EUR
   timezone: Europe/Paris
-  php_ver: "php8.1-fpm"
+  php_ver: "8.1"
 
   # secrets
-  magento_admin_user: "{{ magento_admin_user }}"
-  magento_admin_pass: "{{ magento_admin_pass }}"
+  magento_admin_user: "{{ magento_admin_user_secret }}"
+  magento_admin_pass: "{{ magento_admin_pass_secret }}"
+
+  magento_directory: /var/www/html/magento2-2.4.5
+
+  nginx_server_name: "ec2-13-39-87-106.eu-west-3.compute.amazonaws.com"
